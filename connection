@@ -1,5 +1,6 @@
 package progradle;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -53,7 +54,7 @@ class reportcreation
     			                    		   
     			                    		   .build()
     			                    		   )
-    			                       .setReportType("balance.summary.1")
+    			                       .setReportType("balance_change_from_activity.itemized.3")
     			                       .build();
     	
     	ReportRun reportcreate = ReportRun.create(report);
@@ -88,10 +89,102 @@ class reportcreation
 	
 	
 }
+class operations
+{
+	String username;
+    String password;
+    Connection con;
+	void createconnection(String username, String password) throws ClassNotFoundException, SQLException
+	{
+        Class.forName("org.postgresql.Driver"); // loads the driver
+	    
+        con = DriverManager.getConnection("jdbc:postgresql://localhost:5432/test", username, password);
+
+	}
+	
+	
+	
+	ArrayList<String[]> readdata(String filelink) throws Exception
+	{
+		String line = "";  
+		String splitBy = ",";  
+		
+		ArrayList<String[]> readstrings = new ArrayList<>();
+		boolean creation = false;
+		String[] table = null;
+		
+		try   
+		{  
+		  
+		BufferedReader br = new BufferedReader(new FileReader(filelink));  
+		while ((line = br.readLine()) != null)     
+		{  
+	
+		table = line.split(splitBy);    // use comma as separator    
+		readstrings.add(table);
+		
+		}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		
+		return readstrings;	
+}
+	
+	void writedata(ArrayList<String[]> readstrings) throws SQLException
+	{   
+		
+		
+		boolean creation = false;
+		for (String table[]:readstrings)     
+		{  
+			
+
+           if(creation==false)
+		     {
+			try {
+				
+				  
+			         String query = "create table aaaa(" + table[0]+ "varchar(100) ," +table[1]+ "varchar(100) ," + table[2]+  "float(50) ," + table[3] + "varchar(100));";
+		             creation=true;
+			         Statement stmt = con.createStatement();
+			         ResultSet rs = stmt.executeQuery(query);
+			     
+			    }
+			   catch(Exception e)
+			  {
+				e.printStackTrace();
+				
+			  }
+		    
+		     }
+		else 
+		{
+			   PreparedStatement st = con.prepareStatement("INSERT INTO aaaa values (?, ?, ?, ?)");
+		       String a1 = table[2].replace("\"", " ");
+		       Float value = Float.parseFloat(a1);
+			
+			   st.setString(1, table[0]);
+			   st.setString(2, table[1]);
+			   st.setFloat(3, value);
+			   st.setString(4, table[3]);
+			   st.executeUpdate();
+			   st.close();
+			
+			//System.out.println(rs);
+			
+		 }
+	}
+
+	}
+}
 
 public class createreport {
 
-	public static void main(String[] args) throws StripeException, IOException, URISyntaxException, ClassNotFoundException, SQLException {	
+	public static void main(String[] args) throws Exception {	
+		
 		reportcreation a = new reportcreation();
      	String reportid = a.createreport();
      	
@@ -106,66 +199,17 @@ public class createreport {
 	    
 	    System.out.println("Download Complete");
 	    
-	    
-	    Class.forName("org.postgresql.Driver"); // loads the driver
-	    
-        Connection con = DriverManager.getConnection("jdbc:postgresql://localhost:5432/test", "postgres", "1234");
-	    
-		  
-		String line = "";  
-		String splitBy = ",";  
-		
-		boolean creation = false;
-		try   
-		{  
-		  
-		BufferedReader br = new BufferedReader(new FileReader("C:\\Users\\Hp\\Downloads\\Connected_account_balance_summary_2021-06-01_to_2021-06-21_UTC.csv"));  
-		while ((line = br.readLine()) != null)     
-		{  
-			
-		
-			
-		String[] table = line.split(splitBy);    // use comma as separator    
-		
-		
-		if(creation==false)
-		{
-			try {
-			String query = "create table connection(" + table[0]+ "varchar(100) ," +table[1]+ "varchar(100) ," + table[2]+  "float(50) ," + table[3] + "varchar(100));";
-		   creation=true;
-			Statement stmt = con.createStatement();
-			ResultSet rs = stmt.executeQuery(query);
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-				
-			}
-		    
-		}
-		else {
-			
-			PreparedStatement st = con.prepareStatement("INSERT INTO connection values (?, ?, ?, ?)");
-		   String a1 = table[2].replace("\"", " ");
-		   Float value = Float.parseFloat(a1);
-			
-			st.setString(1, table[0]);
-			st.setString(2, table[1]);
-			st.setFloat(3, value);
-			st.setString(4, table[3]);
-			st.executeUpdate();
-			st.close();
-			
-			//System.out.println(rs);
-	
-		}
-		}  
-		}   
-		catch (IOException e)   
-		{  
-		e.printStackTrace(); 
-		
-		}  
+	    operations operation = new operations();
+        
+        
+        operation.createconnection("postgres", "1234");
+        
+        
+        String filelink = "C:\\\\Users\\\\Hp\\\\Downloads\\\\Connected_account_balance_summary_2021-06-01_to_2021-06-21_UTC.csv";
+        
+        ArrayList<String[]> readstrings = operation.readdata(filelink);
+        
+        operation.writedata(readstrings);
 		
 }
-}v
+}
