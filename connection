@@ -53,7 +53,7 @@ class reportcreation
     			                    		   
     			                    		   .build()
     			                    		   )
-    			                       .setReportType("balance_change_from_activity.itemized.3")
+    			                       .setReportType("balance.summary.1")
     			                       .build();
     	
     	ReportRun reportcreate = ReportRun.create(report);
