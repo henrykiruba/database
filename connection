@@ -1,215 +1,164 @@
 package progradle;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 
-import org.apache.poi.*;
-import org.apache.poi.ss.formula.functions.Rows;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
-import java.io.*;
-import java.net.*;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.hssf.*;
-
 import com.stripe.model.FileLink;
-import com.stripe.model.issuing.Transaction;
 import com.stripe.model.reporting.ReportRun;
-import com.stripe.net.HttpURLConnectionClient;
-import com.stripe.param.FileCreateParams;
+import com.stripe.model.reporting.ReportType;
 import com.stripe.param.FileLinkCreateParams;
 import com.stripe.param.reporting.ReportRunCreateParams;
 
-
-import java.awt.Desktop;
-import java.awt.desktop.*;
-import java.net.http.*;
-
-import java.sql.*;
-import java.io.BufferedReader;  
-import java.io.FileReader;  
-import java.io.IOException;
-
-
-class reportcreation
+class createreportinter implements Runnable
 {
-	String createreport() throws StripeException
-    {
-    	
-    	Stripe.apiKey = "sk_test_51Ix4QYCDZ8SulOxCnKSj0mwT2kfdE2Dcl1HNnGqJkwf7KSvG6cuGPWn0eAdXFq8xfvfp0Gx71QT0xOfnYGOaY2In006JjZLOHs";
-    	ReportRunCreateParams report = ReportRunCreateParams.builder()
-    			                       .setParameters(
-    			                    		   ReportRunCreateParams.Parameters.builder()
-    			                    		  // .setConnectedAccount("acct_1J2YYc2Eqszp3Iuj")
-    			                    		   .setCurrency("usd")
-    			                    		   .setIntervalEnd(1624320000L)
-    			                    		   .setIntervalStart(1622419200L)
-    			                    		  // .setReportingCategory(ReportRunCreateParams.Parameters.ReportingCategory.CHARGE)
-    			                    		   
-    			                    		   .build()
-    			                    		   )
-    			                       .setReportType("balance_change_from_activity.itemized.3")
-    			                       .build();
-    	
-    	ReportRun reportcreate = ReportRun.create(report);
-    	
-    	System.out.println(reportcreate);
-    	
-    	return reportcreate.getId();
-    }
-    
-    
-    
-	String retrievereport(String reportid) throws StripeException
-    {
-    	Stripe.apiKey = "sk_test_51Ix4QYCDZ8SulOxCnKSj0mwT2kfdE2Dcl1HNnGqJkwf7KSvG6cuGPWn0eAdXFq8xfvfp0Gx71QT0xOfnYGOaY2In006JjZLOHs";
-    	ReportRun report = ReportRun.retrieve(reportid);
-    	System.out.println(report);
-    	return report.getResult().getId(); 
-    	
-    }
-	FileLink viewfile(String url) throws StripeException
-	{
-		Stripe.apiKey = "sk_test_51Ix4QYCDZ8SulOxCnKSj0mwT2kfdE2Dcl1HNnGqJkwf7KSvG6cuGPWn0eAdXFq8xfvfp0Gx71QT0xOfnYGOaY2In006JjZLOHs";
-
-		FileLinkCreateParams params = FileLinkCreateParams.builder()
-		                              .setFile(url)
-		                              .build();
-
-		FileLink fileLink = FileLink.create(params);
-		
-		return fileLink;
+    public static String reportid="";
+	@Override
+	public void run() {
+       Stripe.apiKey = "sk_test_51Ix4QYCDZ8SulOxCnKSj0mwT2kfdE2Dcl1HNnGqJkwf7KSvG6cuGPWn0eAdXFq8xfvfp0Gx71QT0xOfnYGOaY2In006JjZLOHs";
+        try
+        {
+        ReportType reportType = ReportType.retrieve("balance.summary.1");
+		ReportRunCreateParams report = ReportRunCreateParams.builder()
+                    .setParameters(
+                 		   ReportRunCreateParams.Parameters.builder()
+                 		   .setCurrency("usd")
+                 		   .setIntervalEnd(reportType.getDataAvailableEnd())
+                 		   .setIntervalStart(reportType.getDataAvailableStart())
+                 		   
+                 		   .build()
+                 		   )
+                    .setReportType("balance.summary.1")
+                    .build();
+			
+		    ReportRun reportcreate =  ReportRun.create(report);
+		    reportid=reportcreate.getId();
+		    
+		    synchronized(this)
+		    {
+		    	while(!((reportcreate = ReportRun.retrieve(reportid)).getStatus().equals("succeeded")))
+		    	{
+		    		
+		    	}
+		    	this.notify();
+		    }
+        }
+        catch(Exception e)
+        {
+        	e.printStackTrace();
+        }
 	}
 	
-	
 }
-class operations
+
+
+class reportretrieve
 {
-	String username;
-    String password;
-    Connection con;
-	void createconnection(String username, String password) throws ClassNotFoundException, SQLException
+	FileLink reportretrieve(String reportid) throws StripeException
 	{
+		Stripe.apiKey = "sk_test_51Ix4QYCDZ8SulOxCnKSj0mwT2kfdE2Dcl1HNnGqJkwf7KSvG6cuGPWn0eAdXFq8xfvfp0Gx71QT0xOfnYGOaY2In006JjZLOHs";
+		ReportRun report = ReportRun.retrieve(reportid);
+		System.out.println(report);
+		FileLinkCreateParams params = FileLinkCreateParams.builder()
+                .setFile(report.getResult().getId())
+                .build();
+
+        FileLink fileLink = FileLink.create(params);
+
+        return fileLink;
+	}
+}
+
+
+class fileoperations
+{
+	Connection con;
+    fileoperations(String username,String password) throws SQLException, ClassNotFoundException
+    {
         Class.forName("org.postgresql.Driver"); // loads the driver
 	    
         con = DriverManager.getConnection("jdbc:postgresql://localhost:5432/test", username, password);
-
-	}
-	
-	
-	
-	ArrayList<String[]> readdata(String filelink) throws Exception
+    }
+	void insert(FileLink url) throws IOException, SQLException
 	{
-		String line = "";  
-		String splitBy = ",";  
-		
-		ArrayList<String[]> readstrings = new ArrayList<>();
+		BufferedReader in = new BufferedReader(new InputStreamReader(new URL(url.getUrl()).openStream()));
+		String line;
 		boolean creation = false;
-		String[] table = null;
-		
-		try   
-		{  
-		  
-		BufferedReader br = new BufferedReader(new FileReader(filelink));  
-		while ((line = br.readLine()) != null)     
-		{  
-	
-		table = line.split(splitBy);    // use comma as separator    
-		readstrings.add(table);
-		
-		}
-		}
-		catch(Exception e)
+		while((line=in.readLine())!=null)
 		{
-			e.printStackTrace();
-		}
-		
-		return readstrings;	
-}
-	
-	void writedata(ArrayList<String[]> readstrings) throws SQLException
-	{   
-		
-		
-		boolean creation = false;
-		for (String table[]:readstrings)     
-		{  
-			
-
-           if(creation==false)
-		     {
-			try {
-				
-				  
-			         String query = "create table aaaa(" + table[0]+ "varchar(100) ," +table[1]+ "varchar(100) ," + table[2]+  "float(50) ," + table[3] + "varchar(100));";
-		             creation=true;
-			         Statement stmt = con.createStatement();
-			         ResultSet rs = stmt.executeQuery(query);
-			     
+			String cells[] = line.split(",");
+			if(creation==false)
+			{
+				String query = "create table aaaaaaa ("+cells[0] +" varchar(100)," + cells[1] + "varchar(100)," + cells[2] + "float(50)," + cells[3] + "varchar(100));";
+		    	Statement ps = con.createStatement();
+		        ps.execute(query);
+		        creation = true;
+		        
+		    }
+			else
+			{
+				String query = "INSERT INTO aaaaaaa VALUES(?,?,?,?)";
+	    		PreparedStatement ps = con.prepareStatement(query);
+	    	 	
+	    		String category = cells[0].replace("\"", "");
+	    		String description = cells[1].replace("\"", "");
+	    	
+	    		
+	    		ps.setString(1, category);
+	    		ps.setString(2, description);
+	    		
+	    	    String floatvalue = cells[2].replace("\"", " ");
+			    Float value = Float.parseFloat(floatvalue);
+	    		
+			    ps.setFloat(3, value);
+			    if(cells.length==4)
+			    {
+			    	String currency = cells[3].replace("\"", "");
+	    		    ps.setString(4, currency);
 			    }
-			   catch(Exception e)
-			  {
-				e.printStackTrace();
-				
-			  }
-		    
-		     }
-		else 
+			    else {
+			    	ps.setString(4, null);
+			    }
+	    		
+	    	    ps.executeUpdate();
+	    
+			}
+	}
+	
+	
+}	
+}
+
+public class reportcreate {
+
+	public static void main(String[] args) throws InterruptedException, StripeException, ClassNotFoundException, SQLException, IOException {
+		
+		createreportinter report = new createreportinter();
+		Thread t = new Thread(report);
+		t.start();
+		synchronized(t)
 		{
-			   PreparedStatement st = con.prepareStatement("INSERT INTO aaaa values (?, ?, ?, ?)");
-		       String a1 = table[2].replace("\"", " ");
-		       Float value = Float.parseFloat(a1);
-			
-			   st.setString(1, table[0]);
-			   st.setString(2, table[1]);
-			   st.setFloat(3, value);
-			   st.setString(4, table[3]);
-			   st.executeUpdate();
-			   st.close();
-			
-			//System.out.println(rs);
-			
-		 }
-	}
+		t.wait();
+		}
+		
+		reportretrieve reportretrieve = new reportretrieve();
+		FileLink url = reportretrieve.reportretrieve(createreportinter.reportid);
+		
+		fileoperations fileoperation = new fileoperations("postgres","1234");
+		
+		fileoperation.insert(url);
+		
+		
 
 	}
-}
 
-public class createreport {
+	}
 
-	public static void main(String[] args) throws Exception {	
-		
-		reportcreation a = new reportcreation();
-     	String reportid = a.createreport();
-     	
-     	System.out.println(reportid);
-		String url1 = a.retrievereport("frr_1J5oF0CDZ8SulOxCPwQOhDcP");
-		
-		FileLink link = a.viewfile(url1);
-
-		
-		Desktop d = Desktop.getDesktop();
-		d.browse(new URI(link.getUrl()));
-	    
-	    System.out.println("Download Complete");
-	    
-	    operations operation = new operations();
-        
-        
-        operation.createconnection("postgres", "1234");
-        
-        
-        String filelink = "C:\\\\Users\\\\Hp\\\\Downloads\\\\Connected_account_balance_summary_2021-06-01_to_2021-06-21_UTC.csv";
-        
-        ArrayList<String[]> readstrings = operation.readdata(filelink);
-        
-        operation.writedata(readstrings);
-		
-}
-}
